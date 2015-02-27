@@ -1,8 +1,8 @@
-float4x4 MtxWorldViewProjection : WorldViewProjection;
 float4x4 MtxWorld : World;
+float4x4 MtxWorldViewProjection : WorldViewProjection;
+float4x4 MtxWorldInverseTranspose : WorldInverseTranspose;
 
 // UI
-
 
 // without this variable shader will be black without viewport's "Use All Lights" option
 int light0Type : LIGHTTYPE
@@ -33,33 +33,33 @@ float3 light0Color : LIGHTCOLOR
 // Structs
 struct app2vs {
     float4 pos : POSITION;
-	float4 normal : NORMAL;
+	float2 texCoord : TEXCOORD0;
+	float4 oNormal : NORMAL;
 };
 
 struct vs2ps {
-    float4 pos : POSITION;
-	float4 diffuse : COLOR;
+    float4 pos : SV_Position;
+	float4 wNormal : TEXCOORD0;
+	float4 lightVec : TEXCOORD1;
 };
 
 // VERTEX SHADER
 vs2ps vs(app2vs In) {
 	vs2ps Out;
 	Out.pos = mul(In.pos, MtxWorldViewProjection);
+	Out.wNormal = mul(In.oNormal, MtxWorldInverseTranspose);
 
-	float3 vtxPositionWorldSpace = mul(In.pos, MtxWorld);
-	float3 lightVector = normalize(light0Pos - vtxPositionWorldSpace);
-
-	float brightness = max(dot(In.normal, lightVector), 0);
-
-	Out.diffuse = float4(light0Color * brightness, 1.0f);
+	float4 vtxPositionWorldSpace = mul(In.pos, MtxWorld);
+	float4 lPos = float4(light0Pos, 1.0f);
+	Out.lightVec = normalize(lPos - vtxPositionWorldSpace);
 
 	return  Out;
 };
 
 // PIXEL SHADER
 float4 ps(vs2ps In): SV_Target {
-	return In.diffuse;
-};
+	return dot(normalize(In.wNormal), normalize(In.lightVec)) * float4(1.0f, 1.0f, 1.0f, 1.0f);
+}
 
 // TECH
 technique11 main {

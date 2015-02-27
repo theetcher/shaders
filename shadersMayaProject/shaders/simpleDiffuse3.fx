@@ -1,8 +1,8 @@
-float4x4 MtxWorldViewProjection : WorldViewProjection;
 float4x4 MtxWorld : World;
+float4x4 MtxWorldViewProjection : WorldViewProjection;
+float4x4 MtxWorldInverseTranspose : WorldInverseTranspose;
 
 // UI
-
 
 // without this variable shader will be black without viewport's "Use All Lights" option
 int light0Type : LIGHTTYPE
@@ -29,6 +29,9 @@ float3 light0Color : LIGHTCOLOR
 	int UIOrder = 2;
 > = { 1.0f, 1.0f, 1.0f};
 
+// ******************
+// SIMPLE
+// ******************
 
 // Structs
 struct app2vs {
@@ -37,7 +40,7 @@ struct app2vs {
 };
 
 struct vs2ps {
-    float4 pos : POSITION;
+    float4 pos : SV_Position;
 	float4 diffuse : COLOR;
 };
 
@@ -61,8 +64,42 @@ float4 ps(vs2ps In): SV_Target {
 	return In.diffuse;
 };
 
+// ******************
+// SMOOTH
+// ******************
+
+// Structs
+struct app2vs2 {
+    float4 pos : POSITION;
+	float2 texCoord : TEXCOORD0;
+	float3 oNormal : NORMAL;
+};
+
+struct vs2ps2 {
+    float4 pos : SV_Position;
+	float3 wNormal : TEXCOORD0;
+	float3 lightVec : TEXCOORD1;
+};
+
+// VERTEX SHADER SMOOTH
+vs2ps2 vs2(app2vs2 In) {
+	vs2ps2 Out;
+	Out.pos = mul(In.pos, MtxWorldViewProjection);
+	Out.wNormal = mul(In.oNormal, MtxWorldInverseTranspose);
+
+	float3 vtxPositionWorldSpace = mul(In.pos, MtxWorld);
+	Out.lightVec = normalize(light0Pos - vtxPositionWorldSpace);
+
+	return  Out;
+};
+
+// PIXEL SHADER SMOOTH
+float4 ps2(vs2ps2 In): SV_Target {
+	return dot(normalize(In.wNormal), normalize(In.lightVec)) * float4(1.0f, 1.0f, 1.0f, 1.0f);
+};
+
 // TECH
-technique11 main {
+technique11 simple {
 
     pass P0 {
         SetVertexShader(CompileShader(vs_5_0, vs()));
@@ -70,4 +107,15 @@ technique11 main {
         SetPixelShader(CompileShader(ps_5_0, ps()));
     }
 
-}
+};
+
+
+technique11 smooth {
+
+    pass P0 {
+        SetVertexShader(CompileShader(vs_5_0, vs2()));
+        //SetGeometryShader(NULL);
+        SetPixelShader(CompileShader(ps_5_0, ps2()));
+    }
+
+};
