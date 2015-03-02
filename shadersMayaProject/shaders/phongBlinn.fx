@@ -170,6 +170,13 @@ float specularBlinn(float3 lightVec, float3 eyeVec, float3 normalVec){
 
 float4 ps(vertex_to_pixel In): SV_Target {
 
+	// normalize vectors
+	float3 wNormal = normalize(In.wNormal);
+	float3 wBinormal = normalize(In.wBinormal);
+	float3 wTangent = normalize(In.wTangent);
+	float3 wLightVec = normalize(In.wLightVec);
+	float3 wEyeVec = normalize(In.wEyeVec);
+
 	// light color
 	float4 lightColor = float4(gLight0Color, 1.0f);
 
@@ -187,12 +194,8 @@ float4 ps(vertex_to_pixel In): SV_Target {
 
 	// normals with normal map
 	float3 tsNormal = gNormalTex.Sample(SamplerAnisoWrap, In.texCoord * gTileNormal) * 2 - 1;
-	float3 wNormalWithNM = normalize((tsNormal.x * In.wTangent) + (tsNormal.y * In.wBinormal) + (tsNormal.z * In.wNormal));
-	wNormalWithNM = lerp(In.wNormal, wNormalWithNM, gNormalScale);
-
-	// normalize vectors
-	float3 wLightVec = normalize(In.wLightVec);
-	float3 wEyeVec = normalize(In.wEyeVec);
+	float3 wNormalWithNM = normalize((tsNormal.x * wTangent) + (tsNormal.y * wBinormal) + (tsNormal.z * wNormal));
+	wNormalWithNM = normalize(lerp(wNormal, wNormalWithNM, gNormalScale));
 
 	// diffuse value
 	float diffuse = saturate(dot(wNormalWithNM, wLightVec));
