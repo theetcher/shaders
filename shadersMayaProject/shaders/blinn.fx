@@ -137,7 +137,7 @@ vertex_to_pixel vs(vertex_in In) {
 	Out.texCoord = In.texCoord;
 
 	float3 vtxPositionWorldSpace = mul(In.oPos, MtxWorld);
-	Out.wLightVec = normalize(gLight0Pos - vtxPositionWorldSpace);
+	Out.wLightVec = gLight0Pos - vtxPositionWorldSpace;
 	Out.wEyeVec = MtxViewInverse[3] - vtxPositionWorldSpace;
 
 	return  Out;

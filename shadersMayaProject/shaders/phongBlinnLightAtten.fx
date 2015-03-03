@@ -28,19 +28,27 @@ float3 gLight0Color : LIGHTCOLOR
 	int UIOrder = 2;
 > = { 1.0f, 1.0f, 1.0f};
 
+float gLight0Intensity : LIGHTINTENSITY
+<
+	string Object = "Light 0";
+	string UIName = "Light 0 Intensity"; 
+	string UIWidget = "slider"; 
+	int UIOrder = 3;
+> = 1.0f;
+
 Texture2D gDiffuseTex <
 	string UIGroup = "Maps";
 	string ResourceName = "";
 	string UIName = "Diffuse Map";
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
-	int UIOrder = 3;
+	int UIOrder = 4;
 >;
 
 float2 gTileDiffuse <
 	string UIGroup = "Maps";
 	string UIName = "Diffuse Map Tiling";
-	int UIOrder = 4;
+	int UIOrder = 5;
 > = {1.0f, 1.0f};
 
 Texture2D gNormalTex <
@@ -49,13 +57,13 @@ Texture2D gNormalTex <
 	string UIName = "Normal Map";
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
-	int UIOrder = 5;
+	int UIOrder = 6;
 >;
 
 float2 gTileNormal <
 	string UIGroup = "Maps";
 	string UIName = "Normal Map Tiling";
-	int UIOrder = 6;
+	int UIOrder = 7;
 > = {1.0f, 1.0f};
 
 float gNormalScale <
@@ -63,28 +71,49 @@ float gNormalScale <
 	string UIName = "Normal Map Scale";
 	float UIMin = 0.0f;
 	float UIMax = 1.0f;
-	int UIOrder = 7;
+	int UIOrder = 8;
+> = 1.0f;
+
+float gLightingDecayScale <
+	string UIGroup = "Params";
+	string UIName = "Lighting Decay Scale";
+	string UIWidget = "slider";
+	float UIMin = 0.0;
+	float UIMax = 1024;
+	float UISoftMax = 1.0;
+	float UIStep = 0.001;
+	int UIOrder = 9;
 > = 1.0f;
 
 float3 gAmbientColor <
 	string UIGroup = "Params";
 	string UIName = "Ambient Color";
 	string UIWidget = "ColorPicker";
-	int UIOrder = 8;
+	int UIOrder = 10;
 > = {0.0f, 0.0f, 0.0f};
 
 float3 gDiffuseColor <
 	string UIGroup = "Params";
 	string UIName = "Diffuse Color";
 	string UIWidget = "ColorPicker";
-	int UIOrder = 9;
+	int UIOrder = 11;
 > = {1.0f, 1.0f, 1.0f};
+
+int gSpecularModel <
+	string UIGroup = "Params";
+	string UIName = "Specular Model";
+	string UIFieldNames ="Phong:Blinn";
+	float UIMin = 0;
+	float UIMax = 1;
+	float UIStep = 1;
+	int UIOrder = 12;
+> = 0;
 
 float3 gSpecularColor <
 	string UIGroup = "Params";
 	string UIName = "Specular Color";
 	string UIWidget = "ColorPicker";
-	int UIOrder = 10;
+	int UIOrder = 13;
 > = {1.0f, 1.0f, 1.0f};
 
 float gSpecularPower <
@@ -95,7 +124,7 @@ float gSpecularPower <
 	float UIMax = 512.0;
 	float UISoftMax = 64.0;
 	float UIStep = 0.01;
-	int UIOrder = 11;
+	int UIOrder = 14;
 > = 64.0f;
 
 
@@ -145,7 +174,27 @@ vertex_to_pixel vs(vertex_in In) {
 };
 
 // PIXEL SHADER
+
+float specularPhong(float3 lightVec, float3 eyeVec, float3 normalVec){
+	float3 lightReflectVec = normalize(dot(lightVec, normalVec) * normalVec * 2 - lightVec);
+	float RdotV = saturate(dot(eyeVec, lightReflectVec));
+	return pow(RdotV, gSpecularPower); 
+};
+
+float specularBlinn(float3 lightVec, float3 eyeVec, float3 normalVec){
+	float3 wHalfwayVec = normalize(lightVec + eyeVec);
+	float NdotH = saturate(dot(normalVec, wHalfwayVec));
+	return pow(NdotH, gSpecularPower); 
+};
+
 float4 ps(vertex_to_pixel In): SV_Target {
+
+	// normalize vectors
+	float3 wNormal = normalize(In.wNormal);
+	float3 wBinormal = normalize(In.wBinormal);
+	float3 wTangent = normalize(In.wTangent);
+	float3 wLightVec = normalize(In.wLightVec);
+	float3 wEyeVec = normalize(In.wEyeVec);
 
 	// light color
 	float4 lightColor = float4(gLight0Color, 1.0f);
@@ -164,25 +213,29 @@ float4 ps(vertex_to_pixel In): SV_Target {
 
 	// normals with normal map
 	float3 tsNormal = gNormalTex.Sample(SamplerAnisoWrap, In.texCoord * gTileNormal) * 2 - 1;
-	float3 wNormalWithNM = normalize((tsNormal.x * In.wTangent) + (tsNormal.y * In.wBinormal) + (tsNormal.z * In.wNormal));
-	wNormalWithNM = lerp(In.wNormal, wNormalWithNM, gNormalScale);
-
-	// normalize vectors
-	float3 wLightVec = normalize(In.wLightVec);
-	float3 wEyeVec = normalize(In.wEyeVec);
+	float3 wNormalWithNM = normalize((tsNormal.x * wTangent) + (tsNormal.y * wBinormal) + (tsNormal.z * wNormal));
+	wNormalWithNM = normalize(lerp(wNormal, wNormalWithNM, gNormalScale));
 
 	// diffuse value
 	float diffuse = saturate(dot(wNormalWithNM, wLightVec));
 
 	// specular value
-	float3 wLightRelectVec = normalize(dot(wLightVec, wNormalWithNM) * wNormalWithNM * 2 - wLightVec);
-	float RdotV = saturate(dot(wEyeVec, wLightRelectVec));
-	float specular = pow(RdotV, gSpecularPower); 
+	float specular;
+	if (gSpecularModel == 0) { // phong
+		specular = specularPhong(wLightVec, wEyeVec, wNormalWithNM);
+	}
+	else if (gSpecularModel == 1) { // blinn
+		specular = specularBlinn(wLightVec, wEyeVec, wNormalWithNM);
+	}
+
+	// lighting attenuation
+	float wLightVecLength = length(In.wLightVec);
+	float lightAtten = gLight0Intensity / (1 + pow(wLightVecLength * gLightingDecayScale, 2));
 
 	// final composition
-	return ambientColor + ((diffTexColor * diffuseColor * diffuse) + (specularColor * specular)) * lightColor;
+	return ambientColor + ((diffTexColor * diffuseColor * diffuse) + (specularColor * specular)) * lightColor * lightAtten;
 
-}
+};
 
 // TECH
 technique11 main {
