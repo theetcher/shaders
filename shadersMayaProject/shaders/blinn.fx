@@ -174,9 +174,12 @@ float4 ps(vertex_to_pixel In): SV_Target {
 	float diffuse = saturate(dot(wNormalWithNM, wLightVec));
 
 	// specular value
-	float3 wHalfwayVec = normalize(wLightVec + wEyeVec);
-	float NdotH = saturate(dot(wNormalWithNM, wHalfwayVec));
-	float specular = pow(NdotH, gSpecularPower); 
+	float specular = 0;
+	if (diffuse > 0) {
+		float3 wHalfwayVec = normalize(wLightVec + wEyeVec);
+		float NdotH = saturate(dot(wNormalWithNM, wHalfwayVec));
+		specular = pow(NdotH, gSpecularPower); 
+	}
 
 	// final composition
 	return ambientColor + ((diffTexColor * diffuseColor * diffuse) + (specularColor * specular)) * lightColor;

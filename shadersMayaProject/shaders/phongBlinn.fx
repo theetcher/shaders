@@ -201,12 +201,14 @@ float4 ps(vertex_to_pixel In): SV_Target {
 	float diffuse = saturate(dot(wNormalWithNM, wLightVec));
 
 	// specular value
-	float specular;
-	if (gSpecularModel == 0) { // phong
-		specular = specularPhong(wLightVec, wEyeVec, wNormalWithNM);
-	}
-	else if (gSpecularModel == 1) { // blinn
-		specular = specularBlinn(wLightVec, wEyeVec, wNormalWithNM);
+	float specular = 0;
+	if (diffuse > 0) {
+		if (gSpecularModel == 0) { // phong
+			specular = specularPhong(wLightVec, wEyeVec, wNormalWithNM);
+		}
+		else if (gSpecularModel == 1) { // blinn
+			specular = specularBlinn(wLightVec, wEyeVec, wNormalWithNM);
+		}
 	}
 
 	// final composition
