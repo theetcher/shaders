@@ -7,65 +7,69 @@ float4x4 MtxViewInverse : ViewInverse;
 
 
 /////////////////////
-// UI
+// GLOBALS
 /////////////////////
 
 // without this variable shader will be black without viewport's "Use All Lights" option
-int gLight0Type : LIGHTTYPE
-<
+int gLight0Type : LIGHTTYPE <
 	string Object = "Light 0";
 	string UIName = "Light 0 Type";
 	string UIWidget = "None";
 	int UIOrder = 0;
 > = 2; // follows LightParameterInfo::ELightType -> spot = 2, point = 3, directional = 4, ambient = 5
 
-float3 gLight0Pos : POSITION 
-< 
+float3 gLight0Pos : POSITION < 
 	string Object = "Light 0";
 	string UIName = "Light 0 Position"; 
 	string Space = "World"; 
 	int UIOrder = 1;
 > = {100.0f, 100.0f, 100.0f}; 
 
-float3 gLight0Dir : DIRECTION 
-< 
+float3 gLight0Dir : DIRECTION < 
 	string Object = "Light 0";
 	string UIName = "Light 0 Direction"; 
 	string Space = "World"; 
 	int UIOrder = 1;
 > = {100.0f, 100.0f, 100.0f}; 
 
-float3 gLight0Color : LIGHTCOLOR 
-<
+float3 gLight0Color : LIGHTCOLOR <
 	string Object = "Light 0";
 	string UIName = "Light 0 Color"; 
 	string UIWidget = "Color"; 
 	int UIOrder = 2;
-> = { 1.0f, 1.0f, 1.0f};
+> = {1.0f, 1.0f, 1.0f};
 
-float gLight0Intensity : LIGHTINTENSITY
-<
+float gLight0Intensity : LIGHTINTENSITY <
 	string Object = "Light 0";
 	string UIName = "Light 0 Intensity"; 
 	string UIWidget = "slider"; 
 	int UIOrder = 3;
 > = 1.0f;
 
-float light0ConeAngle : HOTSPOT	<
+float gLight0Hotspot : HOTSPOT <
 	string Object = "Light 0";
 	string UIName = "Light 0 Cone Angle"; 
 	float UIMin = 0;
 	float UIMax = PI/2;
 	int UIOrder = 4;
-> = { 0.46f };
+> = {0.46f};
 
-float light0FallOff : FALLOFF <
+float gLight0FallOff : FALLOFF <
 	string Object = "Light 0";
 	string UIName = "Light 0 Penumbra Angle"; 
 	float UIMin = 0;
 	float UIMax = PI/2;
 	int UIOrder = 5;
-> = { 0.7f };
+> = {0.7f};
+
+float gLight0DecayRate : DECAYRATE <
+	string Object = "Light 0";
+	string UIName = "Light 0 Decay";
+	float UIMin = 0.0f;
+	float UIMax = 10.0f;
+	float UIStep = 0.01f;
+	int UIOrder = 6;
+> = {0.0f};
 
 Texture2D gDiffuseTex <
 	string UIGroup = "Maps";
@@ -73,13 +77,13 @@ Texture2D gDiffuseTex <
 	string UIName = "Diffuse Map";
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
-	int UIOrder = 6;
+	int UIOrder = 7;
 >;
 
 float2 gTileDiffuse <
 	string UIGroup = "Maps";
 	string UIName = "Diffuse Map Tiling";
-	int UIOrder = 7;
+	int UIOrder = 8;
 > = {1.0f, 1.0f};
 
 Texture2D gNormalTex <
@@ -88,13 +92,13 @@ Texture2D gNormalTex <
 	string UIName = "Normal Map";
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
-	int UIOrder = 8;
+	int UIOrder = 9;
 >;
 
 float2 gTileNormal <
 	string UIGroup = "Maps";
 	string UIName = "Normal Map Tiling";
-	int UIOrder = 9;
+	int UIOrder = 10;
 > = {1.0f, 1.0f};
 
 float gNormalScale <
@@ -102,7 +106,7 @@ float gNormalScale <
 	string UIName = "Normal Map Scale";
 	float UIMin = 0.0f;
 	float UIMax = 1.0f;
-	int UIOrder = 10;
+	int UIOrder = 11;
 > = 1.0f;
 
 float gLightingDecayScale <
@@ -113,21 +117,21 @@ float gLightingDecayScale <
 	float UIMax = 1024;
 	float UISoftMax = 1.0;
 	float UIStep = 0.001;
-	int UIOrder = 11;
+	int UIOrder = 12;
 > = 1.0f;
 
 float3 gAmbientColor <
 	string UIGroup = "Params";
 	string UIName = "Ambient Color";
 	string UIWidget = "ColorPicker";
-	int UIOrder = 12;
+	int UIOrder = 13;
 > = {0.0f, 0.0f, 0.0f};
 
 float3 gDiffuseColor <
 	string UIGroup = "Params";
 	string UIName = "Diffuse Color";
 	string UIWidget = "ColorPicker";
-	int UIOrder = 13;
+	int UIOrder = 14;
 > = {1.0f, 1.0f, 1.0f};
 
 int gSpecularModel <
@@ -137,14 +141,14 @@ int gSpecularModel <
 	float UIMin = 0;
 	float UIMax = 1;
 	float UIStep = 1;
-	int UIOrder = 14;
+	int UIOrder = 15;
 > = 0;
 
 float3 gSpecularColor <
 	string UIGroup = "Params";
 	string UIName = "Specular Color";
 	string UIWidget = "ColorPicker";
-	int UIOrder = 15;
+	int UIOrder = 16;
 > = {1.0f, 1.0f, 1.0f};
 
 float gSpecularPower <
@@ -155,7 +159,7 @@ float gSpecularPower <
 	float UIMax = 512.0;
 	float UISoftMax = 64.0;
 	float UIStep = 0.01;
-	int UIOrder = 16;
+	int UIOrder = 17;
 > = 64.0f;
 
 /////////////////////
@@ -197,13 +201,13 @@ SamplerState SamplerAnisoWrap
 // FUNCTIONS
 /////////////////////
 
-float lightCone(float coneAngle, float coneFalloff, float3 light2pixel, float3 lightDir) { 
-	coneFalloff = (coneFalloff < coneAngle) ? coneAngle : coneFalloff;
+float lightCone(float coneHotspot, float coneFalloff, float3 light2pixel, float3 lightDir) { 
+	coneFalloff = (coneFalloff < coneHotspot) ? coneHotspot : coneFalloff;
 	float LdotDir = dot(light2pixel, lightDir); 
-	return float(smoothstep(cos(coneFalloff), cos(coneAngle), LdotDir));
+	return float(smoothstep(cos(coneFalloff), cos(coneHotspot), LdotDir));
 };
 
-void lightingFunction(float3 lightVec, float3 eyeVec, float3 normal, out float diff, out float spec) {
+void lightingFunction(float3 lightVec, float lightVecLength, float3 eyeVec, float3 normal, out float diff, out float spec) {
 
 	// if light is directional, light vector will be an inverse of light direction
 	if (gLight0Type == 4) {
@@ -228,12 +232,20 @@ void lightingFunction(float3 lightVec, float3 eyeVec, float3 normal, out float d
 		}
 	}
 
-	// need to modulate diff and spec by cone factor if light is a spot
+	// modulate diff and spec by cone factor if light is a spot
 	if (gLight0Type == 2) {
-		float coneFactor = lightCone(light0ConeAngle, light0FallOff, -lightVec, gLight0Dir);
+		float coneFactor = lightCone(gLight0Hotspot, gLight0FallOff, -lightVec, gLight0Dir);
 		diff *= coneFactor;
 		spec *= coneFactor;
 	}
+
+	// attenuation
+	float attenuation = gLight0Intensity;
+	if ( (gLight0Type != 4) && (gLight0DecayRate > 0.0001f) ) {
+		attenuation *= 1 / (1 + pow(lightVecLength * gLightingDecayScale, gLight0DecayRate));
+	}
+	diff *= attenuation;
+	spec *= attenuation;
 
 };
 
@@ -289,15 +301,10 @@ float4 ps(vertex_to_pixel In): SV_Target {
 	float3 wNormalWithNM = normalize((tsNormal.x * wTangent) + (tsNormal.y * wBinormal) + (tsNormal.z * wNormal));
 	wNormalWithNM = normalize(lerp(wNormal, wNormalWithNM, gNormalScale));
 
-	/*
-	// lighting attenuation
-	float wLightVecLength = length(In.wLightVec);
-	float lightAtten = gLight0Intensity / (1 + pow(wLightVecLength * gLightingDecayScale, 2));
-	*/
-
+	// lighting
 	float diffuse = 0.0f;
 	float specular = 0.0f;
-	lightingFunction(wLightVec, wEyeVec, wNormalWithNM, diffuse, specular);
+	lightingFunction(wLightVec, length(In.wLightVec), wEyeVec, wNormalWithNM, diffuse, specular);
 
 	// final composition
 	return ambientColor + ((diffTexColor * diffuseColor * diffuse) + (specularColor * specular)) * lightColor;
