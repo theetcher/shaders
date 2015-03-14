@@ -76,7 +76,7 @@ float3 gSpecularColor <
 float gRoughness <
 	string UIName = "Roughness";
 	float UIMin = 0.0f;
-	float UIMax = 10.0f;
+	float UIMax = 5.0f;
 	int UIOrder = 23;
 > = 1.0f;
 
@@ -102,8 +102,16 @@ SamplerState SamplerAnisoWrap
 // Functions
 ////////////////
 
+float4 color4(float4 f4) {
+	return float4(f4.rgb, 1.0f);
+}
+
 float4 color4(float3 f3) {
 	return float4(f3, 1.0f);
+}
+
+float4 color4(float f) {
+	return float4(f, f, f, 1.0f);
 }
 
 float4 vec4(float3 f) {
@@ -120,36 +128,6 @@ float4 pos4(float3 f) {
 
 float4 pos4(float4 f) {
 	return float4(f.xyz, 1.0f);
-}
-
-float cookTorrance(float4 N, float4 V, float4 L, float roughness, float fr) {
-
-    // intermediary values
-    float H = normalize(L + V);
-    float VdotH = saturate(dot(V, H));
-    float NdotH = saturate(dot(N, H));
-    float NdotV = saturate(dot(N, V));
-    float NdotL = saturate(dot(N, L));
-//    float VdotH = dot(V, H));
-//    float NdotH = dot(N, H));
-//    float NdotV = dot(N, V));
-//    float NdotL = dot(N, L));
-
-    // calculate geometry term
-    float G1 = (2.0f * NdotH * NdotV) / VdotH;
-    float G2 = (2.0f * NdotH * NdotL) / VdotH;
-    float G = min(1.0f, min(G1, G2));
-
-    // calculate fresnel term
-    float F = fr + (1 - fr) * pow(1 - VdotH, 5.0f);
-
-    // calculate roughness term (Gaussian)
-    float c = 1.0f;
-    float alpha = acos(dot(N, H));
-    float R = c * exp( -( alpha / (roughness * roughness) ) );
-
-    // final result
-	return (F * G * R) / (PI * NdotV * NdotL);
 }
 
 ////////////////
@@ -212,17 +190,37 @@ float4 ps(vertex2pixel In): SV_Target {
 	float4 N = vec4(normalize((tsNormal.r * wTangent) + (tsNormal.g * wBinormal) + (tsNormal.b * wNormal)));
 	N = normalize(lerp(wNormal, N, gNormalScale));
 
+    // CT: begin
     float4 V = vec4(normalize(MtxViewInverse[3] - In.wPos));
     float4 L = vec4(normalize(lightPos - In.wPos));
-	float NdotL = dot(N, L);
+    float4 H = normalize(L + V);
+    float VdotH = dot(V, H);
+    float NdotH = dot(N, H);
+    float NdotV = dot(N, V);
+    float NdotL = dot(N, L);
 
-	float cook = cookTorrance(N, V, L, gRoughness, gFresnel);
+    // CT: calculate geometry term
+    float G1 = (2.0f * NdotH * NdotV) / VdotH;
+    float G2 = (2.0f * NdotH * NdotL) / VdotH;
+    float G = min(1.0f, min(G1, G2));
+
+    // CT: calculate fresnel term
+    float F = gFresnel + (1 - gFresnel) * pow(1 - VdotH, 5.0f);
+
+    // CT: calculate roughness term
+    float Roughness_2 = gRoughness * gRoughness;
+    float NDotH_2 = NdotH * NdotH;
+    float A = 1.0f / (4.0f * Roughness_2 * NDotH_2 * NDotH_2 );
+	float B = exp( (NDotH_2 - 1.0f) / ( Roughness_2 * NDotH_2 ) );
+	float R = A * B;
+
+    // CT: final result
+	float cook = saturate((F * G * R) / (NdotV * NdotL));
+	float diffuseValue = saturate(NdotL);
+	cook *= diffuseValue;
 
     // final composition
-
-    //return color4(L);
-    return float4(cook, cook, cook, 1.0f);
-	//return (mDiffColor * saturate(NdotL) + mSpecColor * cook) * gLight0Intensity * lightColor;
+	return (mDiffColor * diffuseValue + mSpecColor * cook) * gLight0Intensity * lightColor;
 
 }
 
