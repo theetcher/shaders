@@ -67,6 +67,15 @@ float3 gDiffuseColor <
 	int UIOrder = 21;
 > = {1.0f, 1.0f, 1.0f};
 
+int gAlgo <
+   string UIName = "Algorithm";
+   string UIFieldNames ="Simple:Complex";
+   float UIMin = 0;
+   float UIMax = 1;
+   float UIStep = 1;
+   int UIOrder = 22;
+> = 0;
+
 float gRoughness <
 	string UIName = "Roughness";
 	float UIMin = 0.0f;
@@ -116,6 +125,57 @@ float4 pos4(float3 f) {
 float4 pos4(float4 f) {
 	return float4(f.xyz, 1.0f);
 }
+
+float orenNayarSimple(float4 N, float4 L, float4 V, float NdotV, float NdotL, float roughness_2) {
+    // thetas
+	float theta_r = acos(NdotV);
+	float theta_i = acos(NdotL);
+
+	// components
+	float alpha = max(theta_r, theta_i);
+	float beta = min(theta_r, theta_i);
+	float gamma = dot(V - N * NdotV, L - N * NdotL);
+	float A = 1.0f - 0.5f * (roughness_2 / (roughness_2 + 0.33f));
+	float B = 0.45f * (roughness_2 / (roughness_2 + 0.09));
+
+	// result
+	return A + B * gamma * sin(alpha) * tan(beta);
+}
+
+float orenNayarComplex(float4 N, float4 L, float4 V, float NdotV, float NdotL, float roughness_2) {
+    // thetas
+	float theta_r = acos(NdotV);
+	float theta_i = acos(NdotL);
+
+	// alpha, beta, gamma
+	float alpha = max(theta_r, theta_i);
+	float beta = min(theta_r, theta_i);
+	float gamma = dot(V - N * NdotV, L - N * NdotL);
+
+	// C1
+	float C1 = 1.0f - 0.5f * (roughness_2 / (roughness_2 + 0.33f));
+
+    // C2
+    float C2 = 0.45f * ( roughness_2 / ( roughness_2 + 0.09 ) );
+    if( gamma >= 0 ) {
+        C2 *= sin(alpha);
+    } else {
+        C2 *= (sin(alpha) - pow((2 * beta) / PI, 3));
+    };
+
+    // C3
+    float C3 = (1.0f / 8.0f);
+    C3 *= roughness_2 / (roughness_2 + 0.09f);
+    C3 *= pow((4.0f * alpha * beta) / (PI * PI), 2);
+
+    // components
+    float A = gamma * C2 * tan(beta);
+    float B = (1 - abs(gamma)) * C3 * tan((alpha + beta) / 2.0f);
+
+	// result
+	return C1 + A + B;
+}
+
 
 ////////////////
 // Structs
@@ -176,26 +236,21 @@ float4 ps(vertex2pixel In): SV_Target {
 	float4 N = vec4(normalize((tsNormal.r * wTangent) + (tsNormal.g * wBinormal) + (tsNormal.b * wNormal)));
 	N = normalize(lerp(wNormal, N, gNormalScale));
 
-    // ON: needed values
+    // needed values
     float4 V = vec4(normalize(MtxViewInverse[3] - In.wPos));
     float4 L = vec4(normalize(lightPos - In.wPos));
     float NdotV = dot(N, V);
     float NdotL = dot(N, L);
     float roughness_2 = gRoughness * gRoughness;
 
-    // ON: thetas
-	float theta_r = acos(NdotV);
-	float theta_i = acos(NdotL);
-
-	// ON: components
-	float alpha = max(theta_r, theta_i);
-	float beta = min(theta_r, theta_i);
-	float gamma = dot(V - N * NdotV, L - N * NdotL);
-	float A = 1.0f - 0.5f * (roughness_2 / (roughness_2 + 0.33f));
-	float B = 0.45f * (roughness_2 / (roughness_2 + 0.09));
-
-	// ON: result
-	float orenNayar = A + B * gamma * sin(alpha) * tan(beta);
+	// Oren-Nayar result
+	float orenNayar;
+    if (gAlgo == 0) { // simple
+        orenNayar = orenNayarSimple(N, L, V, NdotV, NdotL, roughness_2);
+    }
+    else { // complex
+        orenNayar = orenNayarComplex(N, L, V, NdotV, NdotL, roughness_2);
+    }
 
     // final composition
 	return mDiffColor * saturate(NdotL) * gLight0Intensity * lightColor * orenNayar;
