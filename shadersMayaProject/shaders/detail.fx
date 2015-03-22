@@ -44,6 +44,7 @@ Texture2D gNormalTex <
 	string UIName = "Normal Map";
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
+    int mipmaplevels = 0; // 0 = load or generate all mip levels
 	int UIOrder = 10;
 >;
 
@@ -74,6 +75,7 @@ Texture2D gDetailTex <
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
 	int UIOrder = 21;
+    int mipmaplevels = 0; // 0 = load or generate all mip levels
 >;
 
 float gDetailDensity <
