@@ -71,7 +71,6 @@ float4 ps(vs2ps In): SV_Target {
 // Structs
 struct app2vs2 {
     float4 pos : POSITION;
-	float2 texCoord : TEXCOORD0;
 	float3 oNormal : NORMAL;
 };
 
