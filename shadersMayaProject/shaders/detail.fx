@@ -44,7 +44,6 @@ Texture2D gNormalTex <
 	string UIName = "Normal Map";
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
-    int mipmaplevels = 0; // 0 = load or generate all mip levels
 	int UIOrder = 10;
 >;
 
@@ -75,7 +74,6 @@ Texture2D gDetailTex <
 	string UIWidget = "FilePicker";
 	string ResourceType = "2D";
 	int UIOrder = 21;
-    int mipmaplevels = 0; // 0 = load or generate all mip levels
 >;
 
 float gDetailDensity <
@@ -273,7 +271,7 @@ float4 ps(vertex2pixel In): SV_Target {
 // TECH
 ////////////////
 
-technique11 main {
+technique11 main <int texture_mipmaplevels = 0;> {
 
     pass P0 {
         SetVertexShader(CompileShader(vs_5_0, vs()));
