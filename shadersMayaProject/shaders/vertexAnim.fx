@@ -2,11 +2,13 @@ float4x4 MtxWorld : World;
 float4x4 MtxWorldViewProjection : WorldViewProjection;
 float4x4 MtxWorldInverseTranspose : WorldInverseTranspose;
 
+float gTime : Time < string UIWidget = "None"; >;
+
 ////////////////
-// Globals
+// UI
 ////////////////
 
-int light0Type : LIGHTTYPE
+int gLight0Type : LIGHTTYPE
 <
 	string Object = "Light 0";
 	string UIName = "Light 0 Type";
@@ -14,13 +16,41 @@ int light0Type : LIGHTTYPE
 	int UIOrder = 0;
 > = 2;
 
-float3 light0Pos : POSITION
+float3 gLight0Pos : POSITION
 <
 	string Object = "Light 0";
 	string UIName = "Light 0 Position";
 	string Space = "World";
 	int UIOrder = 1;
 > = {100.0f, 100.0f, 100.0f};
+
+float3 gWaveOrigin <
+	string UIName = "Wave Origin";
+	int UIOrder = 10;
+> = {0.0f, 0.0f, 0.0f};
+
+float gDisplacement <
+	string UIName = "Displacement";
+	float UIMin = 0.0f;
+	float UIMax = 0.1f;
+	float UIStep = 0.001;
+	int UIOrder = 11;
+> = 1.0f;
+
+float gFrequency <
+	string UIName = "Frequency";
+	float UIMin = 0.0f;
+	float UIMax = 100.0f;
+	int UIOrder = 12;
+> = 1.0f;
+
+float gTimeScale <
+	string UIName = "Time Scale";
+	float UIMin = 0.0f;
+	float UIMax = 100.0f;
+	int UIOrder = 13;
+> = 0.0f;
+
 
 ////////////////
 // Functions
@@ -61,15 +91,12 @@ float4 pos4(float4 f) {
 struct app2vertex {
     float4 oPos : POSITION;
 	float3 oNormal : NORMAL;
-//	float3 oBinormal : BINORMAL;
-//	float3 oTangent : TANGENT;
 };
 
 struct vertex2pixel {
     float4 pPos : SV_Position;
 	float3 wNormal : TEXCOORD0;
 	float3 wLightVec : TEXCOORD1;
-//	float3 zzz : TEXCOORD2;
 };
 
 //////////////////
@@ -82,15 +109,11 @@ vertex2pixel vs(app2vertex In) {
 	Out.wNormal = mul(In.oNormal, MtxWorldInverseTranspose);
 
 	float3 vtxPositionWorldSpace = mul(In.oPos, MtxWorld);
-	Out.wLightVec = normalize(light0Pos - vtxPositionWorldSpace);
+	Out.wLightVec = normalize(gLight0Pos - vtxPositionWorldSpace);
 
-
-	float4 oPos = In.oPos;
-	float oPosL = length(In.oPos.xyz);
-//	oPos.xyz += In.oNormal * sin(vtxPositionWorldSpace.x * 30) * 0.03;
-	oPos.xyz += In.oNormal * oPosL * 0.03;
-	oPos.w = 1;
-	Out.pPos = mul(oPos, MtxWorldViewProjection);
+    float phase = length(gWaveOrigin - vtxPositionWorldSpace);
+    float3 oPos = In.oPos.xyz + In.oNormal * gDisplacement * sin(phase * gFrequency + gTime * gTimeScale);
+	Out.pPos = mul(pos4(oPos), MtxWorldViewProjection);
 
 	return Out;
 };
@@ -104,7 +127,7 @@ float4 ps(vertex2pixel In): SV_Target {
     float3 N = normalize(In.wNormal);
     float3 L = normalize(In.wLightVec);
 
-	return dot(N, L) * float4(1.0f, 1.0f, 1.0f, 1.0f);
+	return dot(N, L) * color4(1.0f);
 
 }
 
