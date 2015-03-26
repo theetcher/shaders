@@ -2,8 +2,6 @@ float4x4 MtxWorld : World;
 float4x4 MtxWorldViewProjection : WorldViewProjection;
 float4x4 MtxWorldInverseTranspose : WorldInverseTranspose;
 
-float gTime : Time < string UIWidget = "None"; >;
-
 ////////////////
 // UI
 ////////////////
@@ -36,33 +34,33 @@ float2 gTile <
 	int UIOrder = 11;
 > = {1.0f, 1.0f};
 
-float3 gWaveOrigin <
-	string UIName = "Wave Origin";
-	int UIOrder = 20;
-> = {0.0f, 0.0f, 0.0f};
-
-float gDisplacement <
-	string UIName = "Displacement";
-	float UIMin = 0.0f;
-	float UIMax = 0.1f;
+float gBurnout <
+	string UIName = "Burnout";
+	float UIMin = -1.1f;
+	float UIMax = 1.1f;
 	float UIStep = 0.001;
 	int UIOrder = 21;
-> = 1.0f;
+> = 0.0f;
 
-float gFrequency <
-	string UIName = "Frequency";
+float gBurnEdgeScale <
+	string UIName = "Burn Edge Scale";
 	float UIMin = 0.0f;
-	float UIMax = 100.0f;
+	float UIMax = 10.0f;
+	float UIStep = 0.001;
 	int UIOrder = 22;
 > = 1.0f;
 
-float gTimeScale <
-	string UIName = "Time Scale";
-	float UIMin = 0.0f;
-	float UIMax = 100.0f;
+float3 gBurnoutFront <
+	string UIName = "Burnout Front";
+	string UIWidget = "ColorPicker";
 	int UIOrder = 23;
-> = 0.0f;
+> = {1.0f, 1.0f, 1.0f};
 
+float3 gBurnoutBack <
+	string UIName = "Burnout Back";
+	string UIWidget = "ColorPicker";
+	int UIOrder = 24;
+> = {1.0f, 1.0f, 1.0f};
 
 ////////////////
 // Sampler
@@ -150,19 +148,18 @@ vertex2pixel vs(app2vertex In) {
 
 float4 ps(vertex2pixel In): SV_Target {
 
-    float4 diffuse = gDiffuseTex.Sample(SamplerAnisoWrap, In.texCoord * gTile);
+    float4 diffuseTex = gDiffuseTex.Sample(SamplerAnisoWrap, In.texCoord * gTile);
+    float3 diffuseTexColor = diffuseTex.rgb;
+    float burnAlpha = diffuseTex.a;
 
+    clip(burnAlpha - gBurnout);
 
     float3 N = normalize(In.wNormal);
     float3 L = normalize(In.wLightVec);
 
-    float4 Out;
-    Out.rgb = diffuse.rgb * dot(N, L);
-    Out.a = diffuse.a;
+    float3 burnEdge = lerp(gBurnoutFront, gBurnoutBack, saturate((burnAlpha - gBurnout) * gBurnEdgeScale));
 
-    clip(diffuse.a < 0.5f ? -1:1);
-
-	return Out;
+	return color4(diffuseTexColor.rgb * saturate(dot(N, L)) + burnEdge);
 
 }
 
@@ -170,25 +167,8 @@ float4 ps(vertex2pixel In): SV_Target {
 // TECH
 ////////////////
 RasterizerState rasterState {
-//    FillMode = WIREFRAME;
-//    CullMode = FRONT;
     CullMode = NONE;
-
-
 };
-
-//BlendState blendState {
-//    BlendEnable[0] = TRUE;
-//    RenderTargetWriteMask[0] = 0x0F;
-//    AlphaToCoverageEnable = FALSE;
-//    SrcBlend = SRC_ALPHA;
-//    DestBlend = INV_SRC_ALPHA;
-//    BlendOp = ADD;
-//    SrcBlendAlpha = ZERO;
-//    DestBlendAlpha = ZERO;
-//    BlendOpAlpha = ADD;
-//};
-
 
 technique11 main {
 
@@ -196,7 +176,6 @@ technique11 main {
         SetVertexShader(CompileShader(vs_5_0, vs()));
         SetPixelShader(CompileShader(ps_5_0, ps()));
         SetRasterizerState(rasterState);
-//        SetBlendState(blendState, float4( 0.0f, 0.0f, 0.0f, 0.0f ), 0xFFFFFFFF);
     }
 
 }
