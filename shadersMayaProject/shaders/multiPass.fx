@@ -24,6 +24,12 @@ float3 gLight0Pos : POSITION
 	int UIOrder = 1;
 > = {100.0f, 100.0f, 100.0f};
 
+float3 gDiffuseColor <
+	string UIName = "Diffuse Color";
+	string UIWidget = "ColorPicker";
+	int UIOrder = 21;
+> = {1.0f, 1.0f, 1.0f};
+
 Texture2D gLayerTex <
 	string UIName = "Layer Texture";
 	string UIWidget = "FilePicker";
@@ -36,18 +42,19 @@ float2 gTile <
 	int UIOrder = 11;
 > = {1.0f, 1.0f};
 
-float gAlphaScale <
-	string UIName = "Alpha Scale";
+float gContrast <
+	string UIName = "Alpha Contrast";
 	float UIMin = 0.0f;
-	float UIMax = 5.0f;
+	float UISoftMax = 10.0f;
+	float UIMax = 20.0f;
 	float UIStep = 0.001;
 	int UIOrder = 21;
 > = 1.0f;
 
-float gAlphaOffset <
-	string UIName = "Alpha Offset";
-	float UIMin = -5.0f;
-	float UIMax = 5.0f;
+float gBrightness <
+	string UIName = "Alpha Brightness";
+	float UIMin = -1.0f;
+	float UIMax = 1.0f;
 	float UIStep = 0.001;
 	int UIOrder = 22;
 > = 0.0f;
@@ -140,15 +147,14 @@ float4 ps0(vertex2pixel In): SV_Target {
 
     float3 N = normalize(In.wNormal);
     float3 L = normalize(In.wLightVec);
-//	return float4(1.0f, 0.5f, 0.0f, 1.0f) * saturate(dot(N, L));
-	return float4(float3(1.0f, 0.5f, 0.0f) * saturate(dot(N, L)), 1.0f) ;
+	return float4(gDiffuseColor * saturate(dot(N, L)), 1.0f);
 }
 
 float4 ps1(vertex2pixel In): SV_Target {
 
     float4 layerTex = gLayerTex.Sample(SamplerAnisoWrap, In.texCoord * gTile);
     float3 layerTexColor = layerTex.rgb;
-    float layerAlpha = layerTex.a * gAlphaScale + gAlphaOffset;
+    float layerAlpha = gContrast * ((layerTex.a + gBrightness) - 0.5);
 
     clip(layerAlpha);
 
@@ -159,7 +165,7 @@ float4 ps2(vertex2pixel In): SV_Target {
 
     float4 layerTex = gLayerTex.Sample(SamplerAnisoWrap, In.texCoord * gTile);
     float3 layerTexColor = layerTex.rgb;
-    float layerAlpha = layerTex.a * gAlphaScale + gAlphaOffset;
+    float layerAlpha = gContrast * ((layerTex.a + gBrightness) - 0.5) + 0.5;
 
 	return float4(layerTexColor.rgb, layerAlpha);
 }
@@ -169,7 +175,7 @@ float4 ps2(vertex2pixel In): SV_Target {
 ////////////////
 
 RasterizerState rasterState {
-    CullMode = Front;
+    CullMode = None;
 };
 
 BlendState blendState {
@@ -180,8 +186,14 @@ BlendState blendState {
     DestBlend = INV_SRC_ALPHA;
     BlendOp = ADD;
     SrcBlendAlpha = ZERO;
-    DestBlendAlpha = ZERO;
+    DestBlendAlpha = ONE;
     BlendOpAlpha = ADD;
+};
+
+DepthStencilState depthStencilState {
+    DepthEnable = TRUE;
+    DepthWriteMask = ALL;
+    DepthFunc = LESS;
 };
 
 technique11 alphaTest {
@@ -209,6 +221,7 @@ technique11 blending {
         SetVertexShader(CompileShader(vs_5_0, vs()));
         SetPixelShader(CompileShader(ps_5_0, ps2()));
         SetRasterizerState(rasterState);
+        SetDepthStencilState(depthStencilState, 0);
         SetBlendState(blendState, float4( 0.0f, 0.0f, 0.0f, 0.0f ), 0xFFFFFFFF);
     }
 
