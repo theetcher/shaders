@@ -178,7 +178,12 @@ RasterizerState rasterState {
     CullMode = None;
 };
 
-BlendState blendState {
+BlendState blendStateOpaque {
+    BlendEnable[0] = FALSE;
+    AlphaToCoverageEnable = FALSE;
+};
+
+BlendState blendStateTransp {
     BlendEnable[0] = TRUE;
     RenderTargetWriteMask[0] = 0x0F;
     AlphaToCoverageEnable = FALSE;
@@ -190,10 +195,16 @@ BlendState blendState {
     BlendOpAlpha = ADD;
 };
 
-DepthStencilState depthStencilState {
+DepthStencilState depthStencilStateOpaque {
     DepthEnable = TRUE;
     DepthWriteMask = ALL;
-    DepthFunc = LESS;
+    DepthFunc = LESS_EQUAL;
+};
+
+DepthStencilState depthStencilStateTransp {
+    DepthEnable = TRUE;
+    DepthWriteMask = ZERO;
+    DepthFunc = LESS_EQUAL;
 };
 
 technique11 alphaTest {
@@ -215,14 +226,16 @@ technique11 blending {
     pass P0 {
         SetVertexShader(CompileShader(vs_5_0, vs()));
         SetPixelShader(CompileShader(ps_5_0, ps0()));
+        SetRasterizerState(rasterState);
+        SetDepthStencilState(depthStencilStateOpaque, 0);
+        SetBlendState(blendStateOpaque, float4( 0.0f, 0.0f, 0.0f, 0.0f ), 0xFFFFFFFF);
     }
-
+    
     pass P1 {
         SetVertexShader(CompileShader(vs_5_0, vs()));
         SetPixelShader(CompileShader(ps_5_0, ps2()));
         SetRasterizerState(rasterState);
-        SetDepthStencilState(depthStencilState, 0);
-        SetBlendState(blendState, float4( 0.0f, 0.0f, 0.0f, 0.0f ), 0xFFFFFFFF);
+        SetDepthStencilState(depthStencilStateTransp, 0);
+        SetBlendState(blendStateTransp, float4( 0.0f, 0.0f, 0.0f, 0.0f ), 0xFFFFFFFF);
     }
-
 };
